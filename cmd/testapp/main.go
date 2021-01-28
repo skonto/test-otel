@@ -68,12 +68,12 @@ func initMetrics() {
 	}()
 
 	otel.SetMeterProvider(cont.MeterProvider())
-	fmt.Println(fmt.Sprintf("Prometheus server running on :%d", prometheusPort))
-	fmt.Println(fmt.Sprintf("Exporting OTLP to %s", oltpEndpoint()))
+	fmt.Printf("Prometheus server running on :%d\n", prometheusPort)
+	fmt.Printf("Exporting OTLP to %s\n", oltpEndpoint())
 }
 
 func main() {
-	fmt.Println("Starting local example")
+	fmt.Printf("Starting local example\n")
 	initMetrics()
 	if err := memstats.Start(
 		memstats.WithMinimumReadMemStatsInterval(time.Second),

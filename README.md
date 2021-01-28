@@ -29,21 +29,24 @@ You should get output as follows at the collector stdout:
 ```
 
 ```bash
+Metric #26
 Descriptor:
-     -> Name: stavros.runtime.go.mem.alloc
-     -> Description: The number of bytes of allocated heap objects.
+     -> Name: test_app.go.num_forced_gc
+     -> Description: The number of GC cycles that were forced by the application calling the GC function.
      -> Unit: 
      -> DataType: IntSum
      -> IsMonotonic: false
      -> AggregationTemporality: AGGREGATION_TEMPORALITY_CUMULATIVE
 IntDataPoints #0
-StartTime: 1611783783333527191
-Timestamp: 1611783841333723881
-Value: 1838400
+Data point labels:
+     -> app_name: testapp
+StartTime: 1611838376310829445
+Timestamp: 1611838554311065697
+Value: 0
 
 ```
 
-Metrics are also exported at the 0.0.0.0:8889 port (from the collector container). 
+Metrics are exported at the 0.0.0.0:8889 port (from the collector container). 
 Same metrics are exposed locally from the app at port http://localhost:17000.
 Here is a dump:
 ```
@@ -214,3 +217,13 @@ test_app_gobucket_hash_sys{app_name="testapp"} 3.436808e+06
 # TYPE test_app_gomspan_in_use counter
 test_app_gomspan_in_use{app_name="testapp"} 63920
 ```
+
+Known issues:
+
+- Metrics pushed dont maintain their type, if you check above a Gauge exported locally is shown as a Counter at the collector side.
+For more check [this](https://github.com/open-telemetry/opentelemetry-specification/issues/731) and the discussion [here](https://github.com/open-telemetry/opentelemetry-collector/issues/1255).
+- In the testapp raw memstats metrics were exposed. There is an effort to define what metrics are useful for Go programs and this is
+implemented [here](https://github.com/open-telemetry/opentelemetry-go-contrib/blob/master/instrumentation/runtime/runtime.go), 
+however the implemntation is not done, check [Runtime instrumentation: GC "total time spent" metric](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/316)
+- Resource labels are not passed to the pushed metrics when their are exported at the collector side
+- Otel collector has no built-in resiliency, for more check [here](https://github.com/open-telemetry/opentelemetry-collector/issues/2285).

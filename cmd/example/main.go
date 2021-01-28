@@ -17,11 +17,10 @@ import (
 )
 
 // Direct copy of https://github.com/open-telemetry/opentelemetry-go/blob/master/example/prometheus/main.go
+// Just to play around
 var (
 	lemonsKey = label.Key("ex.com/lemons")
 )
-
-var e *prometheus.Exporter
 
 func initMeter() {
 	exporter, err := prometheus.InstallNewPipeline(prometheus.Config{}, basic.WithCollectPeriod(1*time.Minute))
@@ -34,7 +33,6 @@ func initMeter() {
 	}()
 
 	fmt.Println("Prometheus server running on :9090")
-	e = exporter
 }
 
 func main() {
@@ -106,7 +104,7 @@ func main() {
 		counter.Measurement(13.0),
 	)
 
-	fmt.Println("Example finished updating, please visit :2222")
+	fmt.Printf("Example finished updating, please visit :2222\n")
 
 	select {}
 }
