@@ -229,3 +229,5 @@ implemented [here](https://github.com/open-telemetry/opentelemetry-go-contrib/bl
 however the implemntation is not done, check [Runtime instrumentation: GC "total time spent" metric](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/316)
 - Resource labels are not passed to the pushed metrics when their are exported at the collector side
 - Otel collector has no built-in resiliency, for more check [here](https://github.com/open-telemetry/opentelemetry-collector/issues/2285).
+- There is no support yet for "nanoseconds" in metric units, need to change to milliseconds. The [spec](https://github.com/open-telemetry/opentelemetry-specification/pull/1177) is being developed.
+In memestats this is required for certain metrics, so that the semantics are accurate.
