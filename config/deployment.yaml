@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-otel
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: test-otel
+  template:
+    metadata:
+      labels:
+        app: test-otel
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: otel-test
+          terminationMessagePolicy: FallbackToLogsOnError
+          image: ko://knative.dev/test-otel/cmd/example
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - name: metrics
+              containerPort: 9090
