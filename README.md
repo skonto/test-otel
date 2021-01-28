@@ -1,3 +1,11 @@
+The idea is to briefly demonstrate the following architecture covering two use cases
+
+a) export metrics from the app side for Prometheus to scrape them directly
+
+b) push metrics from the app to the collector and let the latter to export them
+
+![architecture](arch.png)
+
 Start with the collector running as a central local service:
 ```bash
 docker run --rm -p 13133:13133 -p 14250:14250 -p 14268:14268 \
