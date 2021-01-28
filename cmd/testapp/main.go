@@ -78,6 +78,7 @@ func main() {
 	if err := memstats.Start(
 		memstats.WithMinimumReadMemStatsInterval(time.Second),
 		memstats.WithLabels([]label.KeyValue{label.Key("app_name").String("testapp")}),
+		memstats.WithMetricPrefix("test_app"),
 	); err != nil {
 		panic(err)
 	}

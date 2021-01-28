@@ -2,6 +2,7 @@ package memstats
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -28,6 +29,9 @@ type config struct {
 
 	// Labels to use eg. from a resource
 	labels []label.KeyValue
+
+	// A common suffix to add for all exposed metrics eg. test_app
+	metricPrefix string
 }
 
 // DefaultMinimumReadMemStatsInterval is the default minimum interval
@@ -49,10 +53,17 @@ func WithExtraRuntimeMetrics() Option {
 	return extraRuntimeMetricsOption(true)
 }
 
-// WithExtraRuntimeMetrics sets a flag that if set to true will allow extra metrics
+// WithLabels sets a number of labels to the actual metric because
+// the export at the collector side does not expose them by default if they are only
+// specified at the resource level
 // to be emitted eg. goroutine num.
 func WithLabels(labels []label.KeyValue) Option {
 	return labelsOption(labels)
+}
+
+// WithMetricPrefix sets a prefix to the name of all the metrics
+func WithMetricPrefix(prefix string) Option {
+	return metricPrefixOption(prefix)
 }
 
 type minimumReadMemStatsIntervalOption time.Duration
@@ -60,6 +71,8 @@ type minimumReadMemStatsIntervalOption time.Duration
 type extraRuntimeMetricsOption bool
 
 type labelsOption []label.KeyValue
+
+type metricPrefixOption string
 
 // ApplyRuntime implements Option.
 func (o minimumReadMemStatsIntervalOption) ApplyRuntime(c *config) {
@@ -74,6 +87,10 @@ func (o extraRuntimeMetricsOption) ApplyRuntime(c *config) {
 
 func (o labelsOption) ApplyRuntime(c *config) {
 	c.labels = o
+}
+
+func (o metricPrefixOption) ApplyRuntime(c *config) {
+	c.metricPrefix = string(o)
 }
 
 type memstatsOtel struct {
@@ -304,7 +321,7 @@ func (r *memstatsOtel) register() error {
 	if r.config.extraRuntimeMetrics {
 		startTime := time.Now()
 		if _, err := r.meter.NewInt64SumObserver(
-			"runtime.uptime",
+			formatWithPrefix(r.config.metricPrefix, "uptime"),
 			func(_ context.Context, result metric.Int64ObserverResult) {
 				result.Observe(time.Since(startTime).Milliseconds())
 			},
@@ -315,7 +332,7 @@ func (r *memstatsOtel) register() error {
 		}
 
 		if _, err := r.meter.NewInt64UpDownSumObserver(
-			"runtime.go.goroutines",
+			formatWithPrefix(r.config.metricPrefix, "go.goroutines"),
 			func(_ context.Context, result metric.Int64ObserverResult) {
 				result.Observe(int64(runtime.NumGoroutine()))
 			},
@@ -325,7 +342,7 @@ func (r *memstatsOtel) register() error {
 		}
 
 		if _, err := r.meter.NewInt64SumObserver(
-			"runtime.go.cgo.calls",
+			formatWithPrefix(r.config.metricPrefix, "go.cgo.calls"),
 			func(_ context.Context, result metric.Int64ObserverResult) {
 				result.Observe(runtime.NumCgoCall())
 			},
@@ -409,14 +426,14 @@ func (r *memstatsOtel) registerMemStats() error {
 	})
 
 	if r.alloc, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.alloc",
+		formatWithPrefix(r.config.metricPrefix, "go.alloc"),
 		metric.WithDescription("The number of bytes of allocated heap objects."),
 	); err != nil {
 		return err
 	}
 
 	if r.totalAlloc, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.total_alloc",
+		formatWithPrefix(r.config.metricPrefix, "go.total_alloc"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The cumulative bytes allocated for heap objects."),
 	); err != nil {
@@ -424,7 +441,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.sys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.sys",
+		formatWithPrefix(r.config.metricPrefix, "go.sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The total bytes of memory obtained from the OS."),
 	); err != nil {
@@ -432,7 +449,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.lookups, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.loookups",
+		formatWithPrefix(r.config.metricPrefix, "go.loookups"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of pointer lookups performed by the runtime."),
 	); err != nil {
@@ -440,7 +457,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.mallocs, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.mallocs",
+		formatWithPrefix(r.config.metricPrefix, "go.mallocs"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The cumulative count of heap objects allocated."),
 	); err != nil {
@@ -448,7 +465,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.frees, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.frees",
+		formatWithPrefix(r.config.metricPrefix, "go.frees"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The cumulative count of heap objects freed."),
 	); err != nil {
@@ -456,7 +473,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapAlloc, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_alloc",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_alloc"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of allocated heap objects."),
 	); err != nil {
@@ -464,7 +481,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of heap memory obtained from the OS."),
 	); err != nil {
@@ -472,7 +489,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapIdle, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_idle",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_idle"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes in idle (unused) spans."),
 	); err != nil {
@@ -480,7 +497,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapInuse, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_inuse",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_inuse"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes in in-use spans."),
 	); err != nil {
@@ -488,7 +505,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapReleased, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_released",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_released"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of physical memory returned to the OS."),
 	); err != nil {
@@ -496,14 +513,14 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.heapObjects, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.heap_objects",
+		formatWithPrefix(r.config.metricPrefix, "go.heap_objects"),
 		metric.WithDescription("Number of allocated heap objects"),
 	); err != nil {
 		return err
 	}
 
 	if r.stackInuse, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.stack_in_use",
+		formatWithPrefix(r.config.metricPrefix, "go.stack_in_use"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes in stack spans."),
 	); err != nil {
@@ -511,7 +528,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.stackSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.stack_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.stack_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of stack memory obtained from the OS."),
 	); err != nil {
@@ -519,7 +536,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.mSpanInuse, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.mspan_in_use",
+		formatWithPrefix(r.config.metricPrefix, "gomspan_in_use"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of allocated mspan structures."),
 	); err != nil {
@@ -527,7 +544,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.mSpanSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.mspan_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.mspan_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of memory obtained from the OS for mspan structures."),
 	); err != nil {
@@ -535,7 +552,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.mCacheInuse, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.mcache_in_use",
+		formatWithPrefix(r.config.metricPrefix, "go.mcache_in_use"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of allocated mcache structures."),
 	); err != nil {
@@ -543,7 +560,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.mCacheSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.mcache_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.mcache_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of memory obtained from the OS for mcache structures."),
 	); err != nil {
@@ -551,7 +568,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.buckHashSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.bucket_hash_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.bucket_hash_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of memory in profiling bucket hash tables."),
 	); err != nil {
@@ -559,7 +576,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.gCSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.bucket_hash_sys",
+		formatWithPrefix(r.config.metricPrefix, "gobucket_hash_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of memory in garbage collection metadata."),
 	); err != nil {
@@ -567,7 +584,7 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.otherSys, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.other_sys",
+		formatWithPrefix(r.config.metricPrefix, "go.other_sys"),
 		metric.WithUnit(unit.Bytes),
 		metric.WithDescription("The number of bytes of memory in miscellaneous off-heap runtime allocations."),
 	); err != nil {
@@ -575,42 +592,42 @@ func (r *memstatsOtel) registerMemStats() error {
 	}
 
 	if r.nextGC, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.next_gc",
+		formatWithPrefix(r.config.metricPrefix, "go.next_gc"),
 		metric.WithDescription("The target heap size of the next GC cycle."),
 	); err != nil {
 		return err
 	}
 
 	if r.lastGC, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.last_gc",
+		formatWithPrefix(r.config.metricPrefix, "go.last_gc"),
 		metric.WithDescription("The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch)."),
 	); err != nil {
 		return err
 	}
 
 	if r.pauseTotalNs, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.total_gc_pause_ns",
+		formatWithPrefix(r.config.metricPrefix, "go.total_gc_pause_ns"),
 		metric.WithDescription("The cumulative nanoseconds in GC stop-the-world pauses since the program started."),
 	); err != nil {
 		return err
 	}
 
 	if r.numGC, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.num_gc",
+		formatWithPrefix(r.config.metricPrefix, "go.num_gc"),
 		metric.WithDescription("The number of completed GC cycles."),
 	); err != nil {
 		return err
 	}
 
 	if r.numForcedGC, err = batchObserver.NewInt64UpDownSumObserver(
-		"runtime.go.mem.num_forced_gc",
+		formatWithPrefix(r.config.metricPrefix, "go.num_forced_gc"),
 		metric.WithDescription("The number of GC cycles that were forced by the application calling the GC function."),
 	); err != nil {
 		return err
 	}
 
 	if r.gCCPUFraction, err = batchObserver.NewFloat64UpDownSumObserver(
-		"runtime.go.mem.num_gc_cpu_fraction",
+		formatWithPrefix(r.config.metricPrefix, "go.gc_cpu_fraction"),
 		metric.WithDescription("The fraction of this program's available CPU time used by the GC since the program started."),
 	); err != nil {
 		return err
@@ -618,7 +635,7 @@ func (r *memstatsOtel) registerMemStats() error {
 
 	if r.config.extraRuntimeMetrics {
 		if liveObjects, err = batchObserver.NewInt64UpDownSumObserver(
-			"runtime.go.mem.live_objects",
+			formatWithPrefix(r.config.metricPrefix, "live_objects"),
 			metric.WithDescription("Number of live objects is the number of cumulative Mallocs - Frees"),
 		); err != nil {
 			return err
@@ -633,6 +650,14 @@ func (r *memstatsOtel) registerMemStats() error {
 		//}
 	}
 	return nil
+}
+
+func formatWithPrefix(prefix string, value string) string {
+	if len(prefix) == 0 {
+		return value
+	} else {
+		return fmt.Sprintf("%s.%s", prefix, value)
+	}
 }
 
 //func computeGCPauses(
