@@ -1,3 +1,4 @@
+## Intro
 The idea is to briefly demonstrate the following architecture covering two use cases
 
 a) export metrics from the app side for Prometheus to scrape them directly
@@ -6,6 +7,7 @@ b) push metrics from the app to the collector and let the latter to export them
 
 ![architecture](arch.png)
 
+## How to run
 Start with the collector running as a central local service:
 ```bash
 docker run --rm -p 13133:13133 -p 14250:14250 -p 14268:14268 \
@@ -218,7 +220,7 @@ test_app_gobucket_hash_sys{app_name="testapp"} 3.436808e+06
 test_app_gomspan_in_use{app_name="testapp"} 63920
 ```
 
-Known issues:
+## Known issues:
 
 - Metrics pushed dont maintain their type, if you check above a Gauge exported locally is shown as a Counter at the collector side.
 For more check [this](https://github.com/open-telemetry/opentelemetry-specification/issues/731) and the discussion [here](https://github.com/open-telemetry/opentelemetry-collector/issues/1255).
