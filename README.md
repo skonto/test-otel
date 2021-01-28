@@ -22,7 +22,7 @@ Start the app:
 go run ./cmd/testapp/main.go 
 Starting local example
 Prometheus server running on :17000
-Exporting OTLP to :30080```
+Exporting OTLP to :55680```
 
 You should get output as follows at the collector stdout:
 
