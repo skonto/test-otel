@@ -104,7 +104,7 @@ func main() {
 		counter.Measurement(13.0),
 	)
 
-	fmt.Printf("Example finished updating, please visit :2222\n")
+	fmt.Printf("Example finished updating, please visit :9090\n")
 
 	select {}
 }

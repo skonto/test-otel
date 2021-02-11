@@ -40,7 +40,7 @@ func initMetrics() {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			// the service name used to display traces in backends
-			semconv.ServiceNameKey.String("testapp"),
+			semconv.ServiceNameKey.String("knativememstats"),
 			label.Key("name").String("stavros"),
 		),
 	)
@@ -73,11 +73,11 @@ func initMetrics() {
 }
 
 func main() {
-	fmt.Printf("Starting local example\n")
+	fmt.Printf("Starting local runtimeplugin\n")
 	initMetrics()
 	if err := memstats.Start(
 		memstats.WithMinimumReadMemStatsInterval(time.Second),
-		memstats.WithLabels([]label.KeyValue{label.Key("app_name").String("testapp")}),
+		memstats.WithLabels([]label.KeyValue{label.Key("app_name").String("knativememstats")}),
 		memstats.WithMetricPrefix("test_app"),
 	); err != nil {
 		panic(err)

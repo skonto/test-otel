@@ -16,7 +16,7 @@ spec:
       containers:
         - name: otel-test
           terminationMessagePolicy: FallbackToLogsOnError
-          image: ko://knative.dev/test-otel/cmd/example
+          image: ko://knative.dev/test-otel/cmd/runtimeplugin
           resources:
             requests:
               cpu: 100m
