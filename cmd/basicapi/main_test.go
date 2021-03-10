@@ -24,7 +24,7 @@ func BenchmarkMetricsRecording(b *testing.B) {
 			}
 		})
 
-		b.Run(c.name + "-parallel", func(b *testing.B) {
+		b.Run(c.name+"-parallel", func(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
 					if c.name == "binding" {

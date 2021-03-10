@@ -18,8 +18,6 @@ import (
 )
 
 var (
-	labels          = []label.KeyValue{label.String("path", "/api/list/foo"), label.String("host", "localhost")}
-	otherLabels     = []label.KeyValue{label.String("path", "/api/list/other"), label.String("host", "remote")}
 	requests        metric.Int64Counter
 	requestsB       metric.BoundInt64Counter
 	requestLatency  metric.Float64ValueRecorder
@@ -57,6 +55,7 @@ func initSyncIntruments() {
 		os.Exit(1)
 	}
 
+	otherLabels := []label.KeyValue{label.String("path", "/api/list/other"), label.String("host", "remote")}
 	// Unbinding needs to be done manually to free mem
 	requestsB = requests.Bind(otherLabels...)
 
@@ -89,6 +88,8 @@ func main() {
 }
 
 func recordMetrics(count int64, latency float64) {
+	// Create labels dynamically to emulate real use
+	labels := []label.KeyValue{label.String("path", "/api/list/foo"), label.String("host", "localhost")}
 	requests.Add(context.TODO(), count, labels...)
 	requestLatency.Record(context.TODO(), latency, labels...)
 }
